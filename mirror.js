@@ -1,17 +1,28 @@
 describe("features/mirror", function() {
-	var MOCK_GUM_HANDLERS, gumSpy, mockElement, mockBoundFunction1, mockBoundFunction2, mockMonitor, subject, OUTPUT_URL;
+	var MOCK_GUM_HANDLERS, gumSpy, mockElement, mockVideoContext, mockVideoCanvas, mockBoundFunction1, mockBoundFunction2, mockMonitor, subject;
 	beforeEach(function() {
 		mockBoundFunction1 = function() {};
 		mockBoundFunction2 = function() {};
-		OUTPUT_URL = "my url";
 
 		gumSpy = spyOn(navigator, 'webkitGetUserMedia').andCallThrough();
-		urlSpy = spyOn(window.URL, 'createObjectURL').andReturn(OUTPUT_URL);
 
 		mockMonitor = {};
 
+		mockVideoContext = {
+			translate: jasmine.createSpy('mockVideoContext.translate'),
+			scale: jasmine.createSpy('mockVideoContext.scale'),
+			font: jasmine.createSpy('mockVideoContext.font'),
+			fillStyle: jasmine.createSpy('mockVideoContext.fillStyle'),
+			fillRect: jasmine.createSpy('mockVideoContext.fillRect')
+		};
+
+		mockVideoCanvas = {
+			getContext: jasmine.createSpy('mockVideoCanvas.getContext').andCallThrough().andReturn(mockVideoContext),
+		};
+
 		mockElement = {
-			children: jasmine.createSpy('mockElement.children').andReturn([mockMonitor])
+			children: jasmine.createSpy('mockElement.children').andReturn([mockMonitor]),
+			find: jasmine.createSpy('mockElemnt.find').andCallThrough().andReturn([mockVideoCanvas])
 		};
 
 		MOCK_GUM_HANDLERS = {
@@ -38,9 +49,32 @@ describe("features/mirror", function() {
 		subject({}, mockElement);
 		expect(gumSpy).toHaveBeenCalled();
 	});
+	
+	describe("calls mockElement.find", function(){
+        
+        it('which is a function', function(){
+        	subject({}, mockElement);
+            expect(mockElement.find).toEqual(jasmine.any(Function));
+        });
+    });
 
-	it('calls window.URL', function(){
-		expect(urlSpy).toHaveBeenCalled();
-	})
+    describe("calls navigator.getUserMedia", function(){
+    
+        it('which is a function', function(){
+            expect(angular.isFunction(navigator.getUserMedia));
+        });
 
+        it('and has 3 arguments', function() {
+            navigator.getUserMedia.reset();
+            expect(navigator.getUserMedia).not.toHaveBeenCalledWith(jasmine.objectContaining({video: true}), jasmine.any(Function), jasmine.any(Function));
+
+            subject({}, mockElement);
+            expect(navigator.getUserMedia).toHaveBeenCalledWith(jasmine.objectContaining({video: true}), jasmine.any(Function), jasmine.any(Function));
+        });
+
+        it('and has an argument that calls bind on gotStream', function(){
+        	subject({}, mockElement);
+            expect(MOCK_GUM_HANDLERS.gotStream.bind).toHaveBeenCalledWith(null, {});
+        });
+    });
 });
